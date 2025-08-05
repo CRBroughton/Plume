@@ -72,6 +72,22 @@ export default class ShavianPlugin extends Plugin {
 			}
 		});
 
+		this.registerEvent(
+			this.app.workspace.on('editor-menu', (menu, editor, view) => {
+				const selection = editor.getSelection();
+				if (selection && this.isShavianScript(selection)) {
+					menu.addItem((item) => {
+						item
+							.setTitle('Add to Shavian Dictionary')
+							.setIcon('book-plus')
+							.onClick(() => {
+								this.addSelectedTextToDictionary(selection);
+							});
+					});
+				}
+			})
+		);
+
 		console.log('Shavian plugin loaded');
 	}
 
@@ -130,6 +146,14 @@ export default class ShavianPlugin extends Plugin {
 			}
 		);
 		modal.open();
+	}
+
+	private addSelectedTextToDictionary(selectedText: string) {
+		const shavianWords = selectedText.match(/[\u{10450}-\u{1047F}]+/gu);
+		if (shavianWords && shavianWords.length > 0) {
+			const firstShavianWord = shavianWords[0];
+			this.showDefinitionModal(firstShavianWord);
+		}
 	}
 
 	private addWordMapping(shavian: string, latin: string) {
