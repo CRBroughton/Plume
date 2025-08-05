@@ -141,6 +141,12 @@ export default class ShavianPlugin extends Plugin {
 		this.registerDomEvent(document, 'paste', (evt: ClipboardEvent) => {
 			if (!this.settings.autoTranslateOnPaste) return;
 			
+			// Don't intercept paste events in modals or input fields
+			const target = evt.target as HTMLElement;
+			if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.closest('.modal'))) {
+				return; // Let the normal paste behavior work
+			}
+			
 			const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
 			if (activeView && activeView.getMode() === 'source') {
 				const editor = activeView.editor;
