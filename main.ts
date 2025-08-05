@@ -6,7 +6,6 @@ interface WordMapping {
 	shavian: string;
 	latin: string;
 	dateAdded: Date;
-	frequency: number;
 }
 
 export default class ShavianPlugin extends Plugin {
@@ -15,6 +14,20 @@ export default class ShavianPlugin extends Plugin {
 
 	async onload() {
 		await this.loadDictionary();
+
+		// Add ribbon icon for dictionary access
+		this.addRibbonIcon('book-open', 'View Shavian Dictionary', () => {
+			new DictionaryViewModal(this.app, this.dictionary, this).open();
+		});
+
+		// Command to show dictionary
+		this.addCommand({
+			id: 'show-dictionary',
+			name: 'Show Shavian dictionary',
+			callback: () => {
+				new DictionaryViewModal(this.app, this.dictionary, this).open();
+			}
+		});
 
 		// Register editor extension for live translation in edit mode
 		this.registerEditorExtension([
@@ -87,17 +100,21 @@ export default class ShavianPlugin extends Plugin {
 	private addWordMapping(shavian: string, latin: string) {
 		const existing = this.dictionary.get(shavian);
 		if (existing) {
-			existing.frequency++;
 			existing.latin = latin;
 		} else {
 			this.dictionary.set(shavian, {
 				shavian,
 				latin,
 				dateAdded: new Date(),
-				frequency: 1
 			});
 		}
 		this.saveDictionary();
+	}
+
+	removeWordMapping(shavian: string) {
+		this.dictionary.delete(shavian);
+		this.saveDictionary();
+		new Notice(`Removed: ${shavian}`);
 	}
 
 	private createShavianViewPlugin() {
@@ -177,14 +194,12 @@ export default class ShavianPlugin extends Plugin {
 						shavian: key,
 						latin: value,
 						dateAdded: new Date(),
-						frequency: 1
 					}];
 				} else {
 					return [key, {
 						shavian: key,
 						latin: value.latin,
 						dateAdded: new Date(value.dateAdded || new Date()),
-						frequency: value.frequency || 1
 					}];
 				}
 			}));
@@ -261,11 +276,11 @@ class WordDefinitionModal extends Modal {
 		wordDisplay.style.border = '2px solid var(--interactive-accent)';
 		wordDisplay.style.borderRadius = '8px';
 
-		contentEl.createEl('p', { text: 'Enter the English equivalent:' });
+		contentEl.createEl('p', { text: 'Enter the Latin equivalent:' });
 
 		this.input = contentEl.createEl('input', {
 			type: 'text',
-			placeholder: 'English translation...'
+			placeholder: 'Latin translation...'
 		});
 		this.input.style.width = '100%';
 		this.input.style.padding = '8px';
@@ -306,6 +321,82 @@ class WordDefinitionModal extends Modal {
 		};
 
 		this.input.focus();
+	}
+
+	onClose() {
+		const { contentEl } = this;
+		contentEl.empty();
+	}
+}
+
+class DictionaryViewModal extends Modal {
+	constructor(
+		app: App, 
+		private dictionary: Map<string, WordMapping>,
+		private plugin: ShavianPlugin
+	) {
+		super(app);
+	}
+
+	onOpen() {
+		const { contentEl } = this;
+		contentEl.empty();
+
+		contentEl.createEl('h2', { text: 'Shavian Dictionary' });
+
+		if (this.dictionary.size === 0) {
+			contentEl.createEl('p', { text: 'No words defined yet. Start typing Shavian words!' });
+			return;
+		}
+
+		contentEl.createEl('p', { text: `Total words: ${this.dictionary.size}` });
+
+		const table = contentEl.createEl('table');
+		table.style.width = '100%';
+		table.style.borderCollapse = 'collapse';
+
+		const header = table.createEl('thead');
+		const headerRow = header.createEl('tr');
+		headerRow.createEl('th', { text: 'Shavian' }).style.border = '1px solid var(--background-modifier-border)';
+		headerRow.createEl('th', { text: 'Latin' }).style.border = '1px solid var(--background-modifier-border)';
+		headerRow.createEl('th', { text: 'Actions' }).style.border = '1px solid var(--background-modifier-border)';
+
+		const tbody = table.createEl('tbody');
+
+		// Sort by latin name alphabetically
+		const sortedEntries = Array.from(this.dictionary.entries())
+			.sort(([,a], [,b]) => a.latin.localeCompare(b.latin));
+
+		sortedEntries.forEach(([shavian, mapping]) => {
+			const row = tbody.createEl('tr');
+			const shavianCell = row.createEl('td', { text: shavian });
+			const latinCell = row.createEl('td', { text: mapping.latin });
+			const actionsCell = row.createEl('td');
+
+			const deleteBtn = actionsCell.createEl('button', { text: '🗑️' });
+			deleteBtn.style.background = 'none';
+			deleteBtn.style.border = 'none';
+			deleteBtn.style.cursor = 'pointer';
+			deleteBtn.title = 'Delete this word';
+
+			deleteBtn.onclick = () => {
+				this.plugin.removeWordMapping(shavian);
+				row.remove();
+				
+				// Update the total count
+				const totalElement = contentEl.querySelector('p');
+				if (totalElement) {
+					totalElement.textContent = `Total words: ${this.dictionary.size}`;
+				}
+			};
+
+			[shavianCell, latinCell, actionsCell].forEach(cell => {
+				cell.style.border = '1px solid var(--background-modifier-border)';
+				cell.style.padding = '8px';
+			});
+
+			shavianCell.style.fontSize = '18px';
+		});
 	}
 
 	onClose() {
