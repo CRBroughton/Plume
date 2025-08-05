@@ -1,94 +1,90 @@
-# Obsidian Sample Plugin
+## Plume
 
-This is a sample plugin for Obsidian (https://obsidian.md).
+Plume is an Obsidian plugin that provides seamless support for the Shavian alphabet (Shaw script). It helps you write in Shavian while building your vocabulary through live translation and smart dictionary management.
 
-This project uses TypeScript to provide type checking and documentation.
-The repo depends on the latest plugin API (obsidian.d.ts) in TypeScript Definition format, which contains TSDoc comments describing what it does.
+**Note**: Plume doesn't ship with any pre-built dictionaries because Shavian is a phonemic script - your spelling will depend on your accent and pronunciation. You'll build your own personalised dictionary as you write, which reflects how *you* pronounce English words.
 
-This sample plugin demonstrates some of the basic functionality the plugin API can do.
-- Adds a ribbon icon, which shows a Notice when clicked.
-- Adds a command "Open Sample Modal" which opens a Modal.
-- Adds a plugin setting tab to the settings page.
-- Registers a global click event and output 'click' to the console.
-- Registers a global interval which logs 'setInterval' to the console.
+## Features
 
-## First time developing plugins?
+### 🖋️ Smart Writing Experience
+- Type in Shavian script naturally
+- See Latin translations of previously defined words as you write
+- Continue seeing the Shavian word you're currently typing
 
-Quick starting guide for new plugin devs:
+### 📚 On-the-fly Learning
+- Automatic popup when you type an unknown Shavian word
+- Quick definition modal - just press space after a new word
+- Build your personal dictionary as you write
 
-- Check if [someone already developed a plugin for what you want](https://obsidian.md/plugins)! There might be an existing plugin similar enough that you can partner up with.
-- Make a copy of this repo as a template with the "Use this template" button (login to GitHub if you don't see it).
-- Clone your repo to a local development folder. For convenience, you can place this folder in your `.obsidian/plugins/your-plugin-name` folder.
-- Install NodeJS, then run `npm i` in the command line under your repo folder.
-- Run `npm run dev` to compile your plugin from `main.ts` to `main.js`.
-- Make changes to `main.ts` (or create new `.ts` files). Those changes should be automatically compiled into `main.js`.
-- Reload Obsidian to load the new version of your plugin.
-- Enable plugin in settings window.
-- For updates to the Obsidian API run `npm update` in the command line under your repo folder.
+### 👁️ Clean Preview
+- Preview mode shows pure Shavian text
+- No translations or modifications in reading view
+- Perfect for sharing or final document review
 
-## Releasing new releases
+### 📖 Dictionary Management
+- View all your defined words in an organized table
+- See usage frequency for each word
+- Delete words you no longer need
+- Automatic saving to your vault
 
-- Update your `manifest.json` with your new version number, such as `1.0.1`, and the minimum Obsidian version required for your latest release.
-- Update your `versions.json` file with `"new-plugin-version": "minimum-obsidian-version"` so older versions of Obsidian can download an older version of your plugin that's compatible.
-- Create new GitHub release using your new version number as the "Tag version". Use the exact version number, don't include a prefix `v`. See here for an example: https://github.com/obsidianmd/obsidian-sample-plugin/releases
-- Upload the files `manifest.json`, `main.js`, `styles.css` as binary attachments. Note: The manifest.json file must be in two places, first the root path of your repository and also in the release.
-- Publish the release.
+## How It Works
 
-> You can simplify the version bump process by running `npm version patch`, `npm version minor` or `npm version major` after updating `minAppVersion` manually in `manifest.json`.
-> The command will bump version in `manifest.json` and `package.json`, and add the entry for the new version to `versions.json`
+1. **Write**: Type Shavian words in edit mode
+2. **Define**: Press space after unknown words to define them
+3. **See**: Previously defined words appear as Latin translations while typing
+4. **Preview**: Switch to preview mode to see clean Shavian text
 
-## Adding your plugin to the community plugin list
+## Installation
 
-- Check the [plugin guidelines](https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines).
-- Publish an initial version.
-- Make sure you have a `README.md` file in the root of your repo.
-- Make a pull request at https://github.com/obsidianmd/obsidian-releases to add your plugin.
+### From Obsidian Community Plugins (coming soon)
+1. Open Obsidian Settings
+2. Go to Community Plugins and disable Safe Mode
+3. Click "Browse" and search for "Plume"
+4. Install and enable the plugin
 
-## How to use
+### Manual Installation
+1. Download the latest release
+2. Extract to `<vault>/.obsidian/plugins/plume/`
+3. Reload Obsidian and enable the plugin
 
-- Clone this repo.
-- Make sure your NodeJS is at least v16 (`node --version`).
-- `npm i` or `yarn` to install dependencies.
-- `npm run dev` to start compilation in watch mode.
+## Usage
 
-## Manually installing the plugin
+### Basic Writing
+1. Create or open a note
+2. Type Shavian characters using your preferred input method
+3. When you type a new Shavian word and press space, a modal will appear asking for the English translation
+4. Define the word and continue writing
+5. Previously defined words will appear in italic Latin text while you type
 
-- Copy over `main.js`, `styles.css`, `manifest.json` to your vault `VaultFolder/.obsidian/plugins/your-plugin-id/`.
+### Dictionary Management
+- Click the book icon (📖) in the ribbon to view your dictionary
+- Use the command palette (Ctrl/Cmd+P) and search for "Show Shavian dictionary"
+- In the dictionary view, click the trash icon (🗑️) to delete unwanted words
 
-## Improve code quality with eslint (optional)
-- [ESLint](https://eslint.org/) is a tool that analyzes your code to quickly find problems. You can run ESLint against your plugin to find common bugs and ways to improve your code. 
-- To use eslint with this project, make sure to install eslint from terminal:
-  - `npm install -g eslint`
-- To use eslint to analyze this project use this command:
-  - `eslint main.ts`
-  - eslint will then create a report with suggestions for code improvement by file and line number.
-- If your source code is in a folder, such as `src`, you can use eslint with this command to analyze all files in that folder:
-  - `eslint .\src\`
+### Preview Mode
+- Switch to preview mode to see your document in pure Shavian script
+- Perfect for final review or sharing with other Shavian readers
 
-## Funding URL
+## Dictionary Storage
 
-You can include funding URLs where people who use your plugin can financially support it.
+Your dictionary is automatically saved as `shavian-dictionary.json` in your vault root. This file contains:
+- All your Shavian → Latin word mappings
+- Usage frequency for each word
+- Metadata about your dictionary
 
-The simple way is to set the `fundingUrl` field to your link in your `manifest.json` file:
+The dictionary file is portable and can be backed up or shared with other Plume users.
 
-```json
-{
-    "fundingUrl": "https://buymeacoffee.com"
-}
-```
+## Shavian Script Support
 
-If you have multiple URLs, you can also do:
+Plume works with any Shavian text in the Unicode range U+10450–U+1047F. You can input Shavian characters using:
+- [Shavian keyboard layouts](https://www.shavian.info/keyboard/)
+- Character picker tools
+- Copy-paste from other Shavian sources
 
-```json
-{
-    "fundingUrl": {
-        "Buy Me a Coffee": "https://buymeacoffee.com",
-        "GitHub Sponsor": "https://github.com/sponsors",
-        "Patreon": "https://www.patreon.com/"
-    }
-}
-```
+## About Shavian
 
-## API Documentation
+The Shavian alphabet is an alternative writing system for English, designed by George Bernard Shaw to be more phonetic and efficient than traditional Latin script. Learn more at [shavian.info](https://www.shavian.info/).
 
-See https://github.com/obsidianmd/obsidian-api
+---
+
+*Plume - where Shavian script meets modern writing tools* ✨
