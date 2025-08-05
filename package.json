@@ -1,7 +1,7 @@
 {
-	"name": "obsidian-sample-plugin",
+	"name": "plume",
 	"version": "1.1.0",
-	"description": "This is a sample plugin for Obsidian (https://obsidian.md)",
+	"description": "An Obsidian plugin for seamless Shavian script writing with live Latin translation and dictionary management",
 	"main": "main.js",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
@@ -9,7 +9,7 @@
 		"version": "node version-bump.mjs"
 	},
 	"keywords": [],
-	"author": "",
+	"author": "CRBroughton",
 	"license": "MIT",
 	"devDependencies": {
 		"@types/node": "^16.11.6",
