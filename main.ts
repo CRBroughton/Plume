@@ -10,7 +10,7 @@ interface WordMapping {
 
 interface ShavianPluginSettings {
 	autoTranslateEnabled: boolean;
-	italicizeTranslations: boolean;
+	italiciseTranslations: boolean;
 	translationColour: string;
 	autoTranslateOnPaste: boolean;
 }
@@ -22,7 +22,7 @@ interface DictionaryData {
 
 const DEFAULT_SETTINGS: ShavianPluginSettings = {
 	autoTranslateEnabled: true,
-	italicizeTranslations: true,
+	italiciseTranslations: true,
 	translationColour: 'var(--text-accent)',
 	autoTranslateOnPaste: true
 }
@@ -275,12 +275,12 @@ export default class ShavianPlugin extends Plugin {
 			if (/^\w+$/.test(word)) {
 				// It's a word, try to translate
 				const lowerWord = word.toLowerCase();
-				const isCapitalized = /^[A-Z]/.test(word);
+				const isCapitalised = /^[A-Z]/.test(word);
 				
 				if (reverseMap.has(lowerWord)) {
 					const shavianWord = reverseMap.get(lowerWord)!;
 					// If the original word was capitalised, add interpunct for proper names
-					return isCapitalized ? '·' + shavianWord : shavianWord;
+					return isCapitalised ? '·' + shavianWord : shavianWord;
 				} else {
 					hasUntranslated = true;
 					return word; // Keep original if not found
@@ -417,7 +417,7 @@ export default class ShavianPlugin extends Plugin {
 							if (mapping) {
 								let displayText = mapping.latin;
 								
-								// If it's a name (preceded by or includes interpunct), capitalize first letter
+								// If it's a name (preceded by or includes interpunct), capitalise first letter
 								if (isName && displayText.length > 0) {
 									displayText = displayText.charAt(0).toUpperCase() + displayText.slice(1);
 								}
@@ -520,7 +520,7 @@ class LatinWidget extends WidgetType {
 			}
 			
 			// Apply italic styling if enabled
-			if (plugin.settings.italicizeTranslations) {
+			if (plugin.settings.italiciseTranslations) {
 				span.style.fontStyle = 'italic';
 			}
 		}
@@ -712,7 +712,7 @@ class ShavianSettingTab extends PluginSettingTab {
 
 		containerEl.empty();
 
-		containerEl.createEl('h2', {text: 'Shavian Plugin Settings'});
+		containerEl.createEl('h2', {text: 'Plume Settings'});
 
 		new Setting(containerEl)
 			.setName('Auto-translate to Latin')
@@ -726,12 +726,12 @@ class ShavianSettingTab extends PluginSettingTab {
 				}));
 
 		new Setting(containerEl)
-			.setName('Italicize translations')
+			.setName('Italicise translations')
 			.setDesc('Display Latin translations in italic font style')
 			.addToggle(toggle => toggle
-				.setValue(this.plugin.settings.italicizeTranslations)
+				.setValue(this.plugin.settings.italiciseTranslations)
 				.onChange(async (value) => {
-					this.plugin.settings.italicizeTranslations = value;
+					this.plugin.settings.italiciseTranslations = value;
 					await this.plugin.saveSettings();
 					this.plugin.refreshAllViews();
 				}));
