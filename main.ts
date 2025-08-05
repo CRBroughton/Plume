@@ -110,15 +110,29 @@ export default class ShavianPlugin extends Plugin {
 		this.registerEvent(
 			this.app.workspace.on('editor-menu', (menu, editor, view) => {
 				const selection = editor.getSelection();
-				if (selection && this.isShavianScript(selection)) {
-					menu.addItem((item) => {
-						item
-							.setTitle('Add to Shavian Dictionary')
-							.setIcon('book-plus')
-							.onClick(() => {
-								this.addSelectedTextToDictionary(selection);
-							});
-					});
+				if (selection) {
+					const isShavian = this.isShavianScript(selection);
+					const isLatin = !isShavian && this.isLatinText(selection);
+					
+					if (isShavian) {
+						menu.addItem((item) => {
+							item
+								.setTitle('Add to Shavian Dictionary')
+								.setIcon('book-plus')
+								.onClick(() => {
+									this.addSelectedTextToDictionary(selection);
+								});
+						});
+					} else if (isLatin) {
+						menu.addItem((item) => {
+							item
+								.setTitle('Replace with Shavian')
+								.setIcon('book-plus')
+								.onClick(() => {
+									this.replaceWithShavian(selection, editor);
+								});
+						});
+					}
 				}
 			})
 		);
@@ -169,6 +183,14 @@ export default class ShavianPlugin extends Plugin {
 		return /[\u{10450}-\u{1047F}]/u.test(text);
 	}
 
+	private isLatinText(text: string): boolean {
+		// Check if text contains Latin letters and is a reasonable length for dictionary entries
+		const trimmed = text.trim();
+		return trimmed.length > 0 && 
+			/^[a-zA-Z\s\-']+$/.test(trimmed) &&
+			!/\d/.test(trimmed); // No numbers
+	}
+
 	private getPreviousWord(editor: Editor): string {
 		const cursor = editor.getCursor();
 		const line = editor.getLine(cursor.line);
@@ -208,11 +230,39 @@ export default class ShavianPlugin extends Plugin {
 		modal.open();
 	}
 
+	private showShavianEntryModal(latinWord: string, editor: Editor) {
+		this.isDefiningWord = true;
+		const modal = new ShavianEntryModal(
+			this.app, 
+			latinWord, 
+			(shavian: string) => {
+				this.addWordMapping(shavian, latinWord);
+				this.isDefiningWord = false;
+				
+				// Replace the selected text with the Shavian equivalent
+				editor.replaceSelection(shavian);
+				
+				new Notice(`Replaced with: ${shavian}`);
+			},
+			() => {
+				this.isDefiningWord = false;
+			}
+		);
+		modal.open();
+	}
+
 	private addSelectedTextToDictionary(selectedText: string) {
 		const shavianWords = selectedText.match(/·?[\u{10450}-\u{1047F}]+/gu);
 		if (shavianWords && shavianWords.length > 0) {
 			const firstShavianWord = shavianWords[0];
 			this.showDefinitionModal(firstShavianWord);
+		}
+	}
+
+	private replaceWithShavian(selectedText: string, editor: Editor) {
+		const latinWord = selectedText.trim();
+		if (latinWord) {
+			this.showShavianEntryModal(latinWord, editor);
 		}
 	}
 
@@ -579,6 +629,89 @@ class WordDefinitionModal extends Modal {
 		this.input.style.width = '100%';
 		this.input.style.padding = '8px';
 		this.input.style.margin = '10px 0';
+
+		const buttonContainer = contentEl.createEl('div');
+		buttonContainer.style.display = 'flex';
+		buttonContainer.style.gap = '10px';
+		buttonContainer.style.justifyContent = 'flex-end';
+		buttonContainer.style.marginTop = '20px';
+
+		const cancelBtn = buttonContainer.createEl('button', { text: 'Cancel' });
+		const saveBtn = buttonContainer.createEl('button', { text: 'Save' });
+		saveBtn.classList.add('mod-cta');
+
+		cancelBtn.onclick = () => {
+			this.onCancel();
+			this.close();
+		};
+
+		saveBtn.onclick = () => {
+			const value = this.input.value.trim();
+			if (value) {
+				this.onDefine(value);
+				this.close();
+			}
+		};
+
+		// Handle Enter key
+		this.input.onkeydown = (evt) => {
+			if (evt.key === 'Enter') {
+				evt.preventDefault();
+				saveBtn.click();
+			} else if (evt.key === 'Escape') {
+				evt.preventDefault();
+				cancelBtn.click();
+			}
+		};
+
+		this.input.focus();
+	}
+
+	onClose() {
+		const { contentEl } = this;
+		contentEl.empty();
+	}
+}
+
+class ShavianEntryModal extends Modal {
+	private input: HTMLInputElement;
+
+	constructor(
+		app: App,
+		private latinWord: string,
+		private onDefine: (shavian: string) => void,
+		private onCancel: () => void
+	) {
+		super(app);
+	}
+
+	onOpen() {
+		const { contentEl } = this;
+		contentEl.empty();
+
+		contentEl.createEl('h2', { text: 'Enter Shavian Equivalent' });
+		
+		const wordDisplay = contentEl.createEl('div', { 
+			text: this.latinWord,
+			cls: 'latin-word-display'
+		});
+		wordDisplay.style.fontSize = '24px';
+		wordDisplay.style.textAlign = 'center';
+		wordDisplay.style.margin = '20px 0';
+		wordDisplay.style.padding = '10px';
+		wordDisplay.style.border = '2px solid var(--interactive-accent)';
+		wordDisplay.style.borderRadius = '8px';
+
+		contentEl.createEl('p', { text: 'Enter the Shavian equivalent:' });
+
+		this.input = contentEl.createEl('input', {
+			type: 'text',
+			placeholder: 'Shavian characters...'
+		});
+		this.input.style.width = '100%';
+		this.input.style.padding = '8px';
+		this.input.style.margin = '10px 0';
+		this.input.style.fontSize = '18px'; // Larger font for Shavian input
 
 		const buttonContainer = contentEl.createEl('div');
 		buttonContainer.style.display = 'flex';
