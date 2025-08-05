@@ -443,7 +443,7 @@ class ShavianSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('Auto-translate to Latin')
-			.setDesc('Automatically show Latin translations of Shavian words while editing')
+			.setDesc('Automatically show Latin translations of Shavian words while editing (triggers on typing)')
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.autoTranslateEnabled)
 				.onChange(async (value) => {
