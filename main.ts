@@ -412,7 +412,7 @@ export default class ShavianPlugin extends Plugin {
 							const baseWord = shavianWord.replace(/^·/, '');
 							
 							// Look up the word in dictionary
-							let mapping = plugin.dictionary.get(baseWord);
+							const mapping = plugin.dictionary.get(baseWord);
 							
 							if (mapping) {
 								let displayText = mapping.latin;
