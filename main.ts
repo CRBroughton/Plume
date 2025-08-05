@@ -10,6 +10,7 @@ interface WordMapping {
 
 interface ShavianPluginSettings {
 	autoTranslateEnabled: boolean;
+	italicizeTranslations: boolean;
 }
 
 interface DictionaryData {
@@ -18,7 +19,8 @@ interface DictionaryData {
 }
 
 const DEFAULT_SETTINGS: ShavianPluginSettings = {
-	autoTranslateEnabled: true
+	autoTranslateEnabled: true,
+	italicizeTranslations: true
 }
 
 declare global {
@@ -389,7 +391,12 @@ class LatinWidget extends WidgetType {
 		const span = document.createElement('span');
 		span.textContent = this.latinText;
 		span.style.color = 'var(--text-accent)';
-		span.style.fontStyle = 'italic';
+		
+		const plugin = window.shavianPlugin;
+		if (plugin && plugin.settings.italicizeTranslations) {
+			span.style.fontStyle = 'italic';
+		}
+		
 		return span;
 	}
 }
@@ -586,6 +593,17 @@ class ShavianSettingTab extends PluginSettingTab {
 				.setValue(this.plugin.settings.autoTranslateEnabled)
 				.onChange(async (value) => {
 					this.plugin.settings.autoTranslateEnabled = value;
+					await this.plugin.saveSettings();
+					this.plugin.refreshAllViews();
+				}));
+
+		new Setting(containerEl)
+			.setName('Italicize translations')
+			.setDesc('Display Latin translations in italic font style')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.italicizeTranslations)
+				.onChange(async (value) => {
+					this.plugin.settings.italicizeTranslations = value;
 					await this.plugin.saveSettings();
 					this.plugin.refreshAllViews();
 				}));
