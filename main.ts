@@ -1,4 +1,4 @@
-import { App, Editor, MarkdownView, Modal, Notice, Plugin } from 'obsidian';
+import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
 import { EditorView, Decoration, DecorationSet, ViewPlugin, ViewUpdate, WidgetType } from '@codemirror/view';
 import { Range } from '@codemirror/state';
 
@@ -8,11 +8,21 @@ interface WordMapping {
 	dateAdded: Date;
 }
 
+interface ShavianPluginSettings {
+	autoTranslateEnabled: boolean;
+}
+
+const DEFAULT_SETTINGS: ShavianPluginSettings = {
+	autoTranslateEnabled: true
+}
+
 export default class ShavianPlugin extends Plugin {
 	private dictionary: Map<string, WordMapping> = new Map();
 	private isDefiningWord = false;
+	settings: ShavianPluginSettings;
 
 	async onload() {
+		await this.loadSettings();
 		await this.loadDictionary();
 
 		// Add ribbon icon for dictionary access
@@ -28,6 +38,9 @@ export default class ShavianPlugin extends Plugin {
 				new DictionaryViewModal(this.app, this.dictionary, this).open();
 			}
 		});
+
+		// Add settings tab
+		this.addSettingTab(new ShavianSettingTab(this.app, this));
 
 		// Register editor extension for live translation in edit mode
 		this.registerEditorExtension([
@@ -51,6 +64,14 @@ export default class ShavianPlugin extends Plugin {
 	onunload() {
 		this.saveDictionary();
 		console.log('Shavian plugin unloaded');
+	}
+
+	async loadSettings() {
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+	}
+
+	async saveSettings() {
+		await this.saveData(this.settings);
 	}
 
 	private isShavianScript(text: string): boolean {
@@ -151,8 +172,8 @@ export default class ShavianPlugin extends Plugin {
 						const wordEnd = wordStart + shavianWord.length;
 						
 						// Only translate words that are NOT currently being typed
-						// (i.e., cursor is not within this word)
-						if (cursor < wordStart || cursor > wordEnd) {
+						// (i.e., cursor is not within this word) and if auto-translate is enabled
+						if ((cursor < wordStart || cursor > wordEnd) && plugin.settings.autoTranslateEnabled) {
 							const mapping = plugin.dictionary.get(shavianWord);
 							
 							if (mapping) {
@@ -402,5 +423,32 @@ class DictionaryViewModal extends Modal {
 	onClose() {
 		const { contentEl } = this;
 		contentEl.empty();
+	}
+}
+
+class ShavianSettingTab extends PluginSettingTab {
+	plugin: ShavianPlugin;
+
+	constructor(app: App, plugin: ShavianPlugin) {
+		super(app, plugin);
+		this.plugin = plugin;
+	}
+
+	display(): void {
+		const {containerEl} = this;
+
+		containerEl.empty();
+
+		containerEl.createEl('h2', {text: 'Shavian Plugin Settings'});
+
+		new Setting(containerEl)
+			.setName('Auto-translate to Latin')
+			.setDesc('Automatically show Latin translations of Shavian words while editing')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.autoTranslateEnabled)
+				.onChange(async (value) => {
+					this.plugin.settings.autoTranslateEnabled = value;
+					await this.plugin.saveSettings();
+				}));
 	}
 }
