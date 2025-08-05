@@ -30,6 +30,7 @@ declare global {
 export default class ShavianPlugin extends Plugin {
 	private dictionary: Map<string, WordMapping> = new Map();
 	private isDefiningWord = false;
+	forceRefresh = false;
 	settings: ShavianPluginSettings;
 
 	async onload() {
@@ -44,12 +45,26 @@ export default class ShavianPlugin extends Plugin {
 			new DictionaryViewModal(this.app, this.dictionary, this).open();
 		});
 
+		// Add ribbon icon for toggling auto-translate
+		this.addRibbonIcon('languages', 'Toggle auto-translate Shavian to Latin', () => {
+			this.toggleAutoTranslate();
+		});
+
 		// Command to show dictionary
 		this.addCommand({
 			id: 'show-dictionary',
 			name: 'Show Shavian dictionary',
 			callback: () => {
 				new DictionaryViewModal(this.app, this.dictionary, this).open();
+			}
+		});
+
+		// Command to toggle auto-translate
+		this.addCommand({
+			id: 'toggle-auto-translate',
+			name: 'Toggle auto-translate Shavian to Latin',
+			callback: () => {
+				this.toggleAutoTranslate();
 			}
 		});
 
@@ -174,6 +189,35 @@ export default class ShavianPlugin extends Plugin {
 		this.dictionary.delete(shavian);
 		this.saveDictionary();
 		new Notice(`Removed: ${shavian}`);
+	}
+
+	toggleAutoTranslate() {
+		this.settings.autoTranslateEnabled = !this.settings.autoTranslateEnabled;
+		this.saveSettings();
+		
+		const status = this.settings.autoTranslateEnabled ? 'enabled' : 'disabled';
+		new Notice(`Auto-translate ${status}`);
+		
+		this.refreshAllViews();
+	}
+
+	refreshAllViews() {
+		this.forceRefresh = true;
+		// Force refresh of all editor views to update decorations
+		this.app.workspace.iterateAllLeaves(leaf => {
+			if (leaf.view.getViewType() === 'markdown') {
+				const markdownView = leaf.view as any;
+				if (markdownView.editor && markdownView.editor.cm) {
+					const editor = markdownView.editor.cm as EditorView;
+					// Force a complete decoration rebuild by simulating a document change
+					editor.dispatch({
+						changes: { from: 0, to: 0, insert: '' },
+						effects: []
+					});
+				}
+			}
+		});
+		this.forceRefresh = false;
 	}
 
 	private createShavianViewPlugin() {
@@ -543,6 +587,7 @@ class ShavianSettingTab extends PluginSettingTab {
 				.onChange(async (value) => {
 					this.plugin.settings.autoTranslateEnabled = value;
 					await this.plugin.saveSettings();
+					this.plugin.refreshAllViews();
 				}));
 	}
 }
