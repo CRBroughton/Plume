@@ -185,7 +185,8 @@ export default class ShavianPlugin extends Plugin {
 			}
 
 			update(update: ViewUpdate) {
-				if (update.docChanged || update.viewportChanged) {
+				const plugin = window.shavianPlugin;
+				if (update.docChanged || update.viewportChanged || update.selectionSet || (plugin && plugin.forceRefresh)) {
 					this.decorations = this.buildDecorations(update.view);
 				}
 			}
