@@ -12,6 +12,7 @@ interface ShavianPluginSettings {
 	autoTranslateEnabled: boolean;
 	italicizeTranslations: boolean;
 	translationColour: string;
+	autoTranslateOnPaste: boolean;
 }
 
 interface DictionaryData {
@@ -22,7 +23,8 @@ interface DictionaryData {
 const DEFAULT_SETTINGS: ShavianPluginSettings = {
 	autoTranslateEnabled: true,
 	italicizeTranslations: true,
-	translationColour: 'var(--text-accent)'
+	translationColour: 'var(--text-accent)',
+	autoTranslateOnPaste: true
 }
 
 declare global {
@@ -72,6 +74,20 @@ export default class ShavianPlugin extends Plugin {
 			}
 		});
 
+		// Command to translate selected text
+		this.addCommand({
+			id: 'translate-selected-text',
+			name: 'Translate selected text',
+			editorCallback: (editor: Editor) => {
+				const selection = editor.getSelection();
+				if (selection) {
+					this.translateSelectedText(editor, selection);
+				} else {
+					new Notice('No text selected');
+				}
+			}
+		});
+
 		// Add settings tab
 		this.addSettingTab(new ShavianSettingTab(this.app, this));
 
@@ -106,6 +122,31 @@ export default class ShavianPlugin extends Plugin {
 				}
 			})
 		);
+
+		// Register paste event listener for auto-translation
+		this.registerDomEvent(document, 'paste', (evt: ClipboardEvent) => {
+			if (!this.settings.autoTranslateOnPaste) return;
+			
+			const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+			if (activeView && activeView.getMode() === 'source') {
+				const editor = activeView.editor;
+				
+				// Try to handle paste immediately and prevent default
+				const clipboardData = evt.clipboardData;
+				if (clipboardData) {
+					const pastedText = clipboardData.getData('text/plain');
+					if (pastedText.trim() && !this.isShavianScript(pastedText)) {
+						evt.preventDefault();
+						evt.stopPropagation();
+						
+						// Use setTimeout to ensure the editor is ready
+						setTimeout(() => {
+							this.handlePasteTranslation(pastedText, editor);
+						}, 0);
+					}
+				}
+			}
+		}, { capture: true });
 
 		console.log('Shavian plugin loaded');
 	}
@@ -173,6 +214,84 @@ export default class ShavianPlugin extends Plugin {
 			const firstShavianWord = shavianWords[0];
 			this.showDefinitionModal(firstShavianWord);
 		}
+	}
+
+	private handlePasteTranslation(pastedText: string, editor: Editor) {
+		const translatedText = this.translateLatinToShavian(pastedText);
+
+		if (translatedText.translated !== pastedText) {
+			// Insert translated text
+			editor.replaceSelection(translatedText.translated);
+
+			// Show notification if not all words were translated
+			if (translatedText.hasUntranslated) {
+				new Notice('Not all words could be translated using your dictionary');
+			} else {
+				new Notice('Text auto-translated (Latin → Shavian)');
+			}
+		} else {
+			// No translation occurred, insert original text
+			editor.replaceSelection(pastedText);
+			new Notice('No translatable words found');
+		}
+	}
+
+	private translateSelectedText(editor: Editor, selectedText: string) {
+		const isShavianText = this.isShavianScript(selectedText);
+		if (isShavianText) {
+			new Notice('Only Latin to Shavian translation is supported');
+			return;
+		}
+
+		const translatedText = this.translateLatinToShavian(selectedText);
+
+		if (translatedText.translated !== selectedText) {
+			editor.replaceSelection(translatedText.translated);
+
+			// Show notification
+			if (translatedText.hasUntranslated) {
+				new Notice('Not all words could be translated using your dictionary');
+			} else {
+				new Notice('Text translated (Latin → Shavian)');
+			}
+		} else {
+			new Notice('No translatable words found in selection');
+		}
+	}
+
+	private translateLatinToShavian(text: string): { translated: string; hasUntranslated: boolean } {
+		let hasUntranslated = false;
+		
+		// Create a reverse mapping from Latin to Shavian
+		const reverseMap = new Map<string, string>();
+		this.dictionary.forEach((mapping, shavian) => {
+			// Store lowercase version
+			reverseMap.set(mapping.latin.toLowerCase(), shavian);
+		});
+
+		// Split text into words while preserving punctuation and spacing
+		const words = text.match(/\b\w+\b|\W+/g) || [];
+		const translatedWords = words.map(word => {
+			if (/^\w+$/.test(word)) {
+				// It's a word, try to translate
+				const lowerWord = word.toLowerCase();
+				const isCapitalized = /^[A-Z]/.test(word);
+				
+				if (reverseMap.has(lowerWord)) {
+					const shavianWord = reverseMap.get(lowerWord)!;
+					// If the original word was capitalised, add interpunct for proper names
+					return isCapitalized ? '·' + shavianWord : shavianWord;
+				} else {
+					hasUntranslated = true;
+					return word; // Keep original if not found
+				}
+			} else {
+				// It's punctuation or whitespace, keep as-is
+				return word;
+			}
+		});
+
+		return { translated: translatedWords.join(''), hasUntranslated };
 	}
 
 	private addWordMapping(shavian: string, latin: string) {
@@ -395,9 +514,9 @@ class LatinWidget extends WidgetType {
 		
 		const plugin = window.shavianPlugin;
 		if (plugin) {
-			// Apply color if specified (empty string means no color override)
-			if (plugin.settings.translationColor) {
-				span.style.color = plugin.settings.translationColor;
+			// Apply colour if specified (empty string means no colour override)
+			if (plugin.settings.translationColour) {
+				span.style.color = plugin.settings.translationColour;
 			}
 			
 			// Apply italic styling if enabled
@@ -622,11 +741,21 @@ class ShavianSettingTab extends PluginSettingTab {
 			.setDesc('Colour for Latin translations. Use CSS colour values (e.g., "#ff0000", "red", "var(--text-accent)"). Leave empty for default text colour.')
 			.addText(text => text
 				.setPlaceholder('var(--text-accent)')
-				.setValue(this.plugin.settings.translationColor)
+				.setValue(this.plugin.settings.translationColour)
 				.onChange(async (value) => {
-					this.plugin.settings.translationColor = value.trim();
+					this.plugin.settings.translationColour = value.trim();
 					await this.plugin.saveSettings();
 					this.plugin.refreshAllViews();
+				}));
+
+		new Setting(containerEl)
+			.setName('Auto-translate on paste')
+			.setDesc('Automatically translate pasted Latin text to Shavian using your dictionary.')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.autoTranslateOnPaste)
+				.onChange(async (value) => {
+					this.plugin.settings.autoTranslateOnPaste = value;
+					await this.plugin.saveSettings();
 				}));
 	}
 }
