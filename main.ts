@@ -12,8 +12,19 @@ interface ShavianPluginSettings {
 	autoTranslateEnabled: boolean;
 }
 
+interface DictionaryData {
+	dictionary?: [string, WordMapping | string][];
+	[key: string]: unknown;
+}
+
 const DEFAULT_SETTINGS: ShavianPluginSettings = {
 	autoTranslateEnabled: true
+}
+
+declare global {
+	interface Window {
+		shavianPlugin?: ShavianPlugin;
+	}
 }
 
 export default class ShavianPlugin extends Plugin {
@@ -24,6 +35,9 @@ export default class ShavianPlugin extends Plugin {
 	async onload() {
 		await this.loadSettings();
 		await this.loadDictionary();
+
+		// Set global reference for the view plugin
+		window.shavianPlugin = this;
 
 		// Add ribbon icon for dictionary access
 		this.addRibbonIcon('book-open', 'View Shavian Dictionary', () => {
@@ -139,7 +153,6 @@ export default class ShavianPlugin extends Plugin {
 	}
 
 	private createShavianViewPlugin() {
-		const plugin = this;
 		return ViewPlugin.fromClass(class {
 			decorations: DecorationSet;
 
@@ -157,6 +170,9 @@ export default class ShavianPlugin extends Plugin {
 				const decorations: Range<Decoration>[] = [];
 				const doc = view.state.doc;
 				const cursor = view.state.selection.main.head;
+
+				const plugin = window.shavianPlugin;
+				if (!plugin) return Decoration.set([]);
 
 				for (let pos = 0; pos < doc.length;) {
 					const line = doc.lineAt(pos);
@@ -197,19 +213,19 @@ export default class ShavianPlugin extends Plugin {
 	private async loadDictionary() {
 		try {
 			const data = await this.app.vault.adapter.read('shavian-dictionary.json');
-			const jsonData = JSON.parse(data);
+			const jsonData = JSON.parse(data) as DictionaryData;
 			
 			// Handle different formats
-			let entries: [string, any][];
+			let entries: [string, WordMapping | string][];
 			if (jsonData.dictionary && Array.isArray(jsonData.dictionary)) {
 				entries = jsonData.dictionary;
 			} else if (Array.isArray(jsonData)) {
-				entries = jsonData;
+				entries = jsonData as [string, WordMapping | string][];
 			} else {
-				entries = Object.entries(jsonData);
+				entries = Object.entries(jsonData) as [string, WordMapping | string][];
 			}
 			
-			this.dictionary = new Map(entries.map(([key, value]: [string, any]) => {
+			this.dictionary = new Map(entries.map(([key, value]: [string, WordMapping | string]) => {
 				if (typeof value === 'string') {
 					return [key, {
 						shavian: key,
