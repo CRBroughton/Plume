@@ -726,7 +726,7 @@ class ShavianSettingTab extends PluginSettingTab {
 				}));
 
 		new Setting(containerEl)
-			.setName('Italicise translations')
+			.setName('Italicise auto translations')
 			.setDesc('Display Latin translations in italic font style')
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.italiciseTranslations)
