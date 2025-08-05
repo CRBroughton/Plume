@@ -11,6 +11,7 @@ interface WordMapping {
 interface ShavianPluginSettings {
 	autoTranslateEnabled: boolean;
 	italicizeTranslations: boolean;
+	translationColour: string;
 }
 
 interface DictionaryData {
@@ -20,7 +21,8 @@ interface DictionaryData {
 
 const DEFAULT_SETTINGS: ShavianPluginSettings = {
 	autoTranslateEnabled: true,
-	italicizeTranslations: true
+	italicizeTranslations: true,
+	translationColour: 'var(--text-accent)'
 }
 
 declare global {
@@ -390,11 +392,18 @@ class LatinWidget extends WidgetType {
 	toDOM() {
 		const span = document.createElement('span');
 		span.textContent = this.latinText;
-		span.style.color = 'var(--text-accent)';
 		
 		const plugin = window.shavianPlugin;
-		if (plugin && plugin.settings.italicizeTranslations) {
-			span.style.fontStyle = 'italic';
+		if (plugin) {
+			// Apply color if specified (empty string means no color override)
+			if (plugin.settings.translationColor) {
+				span.style.color = plugin.settings.translationColor;
+			}
+			
+			// Apply italic styling if enabled
+			if (plugin.settings.italicizeTranslations) {
+				span.style.fontStyle = 'italic';
+			}
 		}
 		
 		return span;
@@ -604,6 +613,18 @@ class ShavianSettingTab extends PluginSettingTab {
 				.setValue(this.plugin.settings.italicizeTranslations)
 				.onChange(async (value) => {
 					this.plugin.settings.italicizeTranslations = value;
+					await this.plugin.saveSettings();
+					this.plugin.refreshAllViews();
+				}));
+
+		new Setting(containerEl)
+			.setName('Translation colour')
+			.setDesc('Colour for Latin translations. Use CSS colour values (e.g., "#ff0000", "red", "var(--text-accent)"). Leave empty for default text colour.')
+			.addText(text => text
+				.setPlaceholder('var(--text-accent)')
+				.setValue(this.plugin.settings.translationColor)
+				.onChange(async (value) => {
+					this.plugin.settings.translationColor = value.trim();
 					await this.plugin.saveSettings();
 					this.plugin.refreshAllViews();
 				}));
