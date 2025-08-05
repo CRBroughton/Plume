@@ -149,7 +149,7 @@ export default class ShavianPlugin extends Plugin {
 	}
 
 	private addSelectedTextToDictionary(selectedText: string) {
-		const shavianWords = selectedText.match(/[\u{10450}-\u{1047F}]+/gu);
+		const shavianWords = selectedText.match(/·?[\u{10450}-\u{1047F}]+/gu);
 		if (shavianWords && shavianWords.length > 0) {
 			const firstShavianWord = shavianWords[0];
 			this.showDefinitionModal(firstShavianWord);
@@ -202,8 +202,29 @@ export default class ShavianPlugin extends Plugin {
 					const line = doc.lineAt(pos);
 					const text = line.text;
 					
-					// Find Shavian text in this line
-					const shavianRegex = /[\u{10450}-\u{1047F}]+/gu;
+					// Collect all replacements for this line
+					const lineDecorations: Range<Decoration>[] = [];
+					
+					// Replace ‹ and › with quotation marks
+					const quotationRegex = /[‹›]/g;
+					let quotationMatch;
+					
+					while ((quotationMatch = quotationRegex.exec(text)) !== null) {
+						const quotationChar = quotationMatch[0];
+						const charStart = line.from + quotationMatch.index;
+						const charEnd = charStart + 1;
+						
+						// Only replace if cursor is not at this position
+						if (cursor !== charStart && cursor !== charEnd) {
+							const replacementChar = quotationChar === '‹' ? '"' : '"';
+							lineDecorations.push(Decoration.replace({
+								widget: new QuotationWidget(replacementChar)
+							}).range(charStart, charEnd));
+						}
+					}
+					
+					// Find Shavian text in this line, including optional interpunct at front
+					const shavianRegex = /·?[\u{10450}-\u{1047F}]+/gu;
 					let match;
 					
 					while ((match = shavianRegex.exec(text)) !== null) {
@@ -214,15 +235,35 @@ export default class ShavianPlugin extends Plugin {
 						// Only translate words that are NOT currently being typed
 						// (i.e., cursor is not within this word) and if auto-translate is enabled
 						if ((cursor < wordStart || cursor > wordEnd) && plugin.settings.autoTranslateEnabled) {
-							const mapping = plugin.dictionary.get(shavianWord);
+							// Check if the word starts with interpunct (captured by regex) or if there's one before
+							const hasInterpunctInMatch = shavianWord.startsWith('·');
+							const charBeforeMatch = match.index > 0 ? text[match.index - 1] : '';
+							const isName = hasInterpunctInMatch || charBeforeMatch === '·';
+							
+							// Get the base word (without any leading interpunct from the match)
+							const baseWord = shavianWord.replace(/^·/, '');
+							
+							// Look up the word in dictionary
+							let mapping = plugin.dictionary.get(baseWord);
 							
 							if (mapping) {
-								decorations.push(Decoration.replace({
-									widget: new LatinWidget(mapping.latin)
+								let displayText = mapping.latin;
+								
+								// If it's a name (preceded by or includes interpunct), capitalize first letter
+								if (isName && displayText.length > 0) {
+									displayText = displayText.charAt(0).toUpperCase() + displayText.slice(1);
+								}
+								
+								lineDecorations.push(Decoration.replace({
+									widget: new LatinWidget(displayText)
 								}).range(wordStart, wordEnd));
 							}
 						}
 					}
+					
+					// Sort decorations by position and add to main array
+					lineDecorations.sort((a, b) => a.from - b.from);
+					decorations.push(...lineDecorations);
 					
 					pos = line.to + 1;
 				}
@@ -304,6 +345,18 @@ class LatinWidget extends WidgetType {
 		span.textContent = this.latinText;
 		span.style.color = 'var(--text-accent)';
 		span.style.fontStyle = 'italic';
+		return span;
+	}
+}
+
+class QuotationWidget extends WidgetType {
+	constructor(private quotationText: string) {
+		super();
+	}
+
+	toDOM() {
+		const span = document.createElement('span');
+		span.textContent = this.quotationText;
 		return span;
 	}
 }
